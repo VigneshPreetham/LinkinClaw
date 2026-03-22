@@ -83,6 +83,7 @@ HTML_PAGE = """<!DOCTYPE html>
     position: relative;
     display: flex;
     align-items: center;
+    gap: 8px;
   }
   input, select {
     width: 100%;
@@ -98,22 +99,30 @@ HTML_PAGE = """<!DOCTYPE html>
   input:focus, select:focus {
     border-color: #4a9eff;
   }
-  input[type="password"] {
-    padding-right: 44px;
-  }
   .toggle-pw {
-    position: absolute;
-    right: 10px;
-    background: none;
-    border: none;
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    background: #252525;
+    border: 1px solid #333;
+    border-radius: 8px;
     color: #666;
     cursor: pointer;
-    font-size: 18px;
-    padding: 4px;
-    line-height: 1;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+    order: -1;
   }
   .toggle-pw:hover {
+    background: #333;
     color: #aaa;
+  }
+  .toggle-pw.active {
+    background: #2a3a2a;
+    color: #4ade80;
+    border-color: #4ade80;
   }
   select {
     appearance: none;
@@ -206,7 +215,7 @@ HTML_PAGE = """<!DOCTYPE html>
           <label>LinkedIn Password</label>
           <div class="input-wrap">
             <input type="password" id="li_password" placeholder="••••••••">
-            <button type="button" class="toggle-pw" onclick="togglePw('li_password', this)">👁</button>
+            <button type="button" class="toggle-pw" title="Show password" onclick="togglePw('li_password', this)">👁</button>
           </div>
         </div>
       </div>
@@ -220,7 +229,7 @@ HTML_PAGE = """<!DOCTYPE html>
           <label>Google Password</label>
           <div class="input-wrap">
             <input type="password" id="google_password" placeholder="••••••••">
-            <button type="button" class="toggle-pw" onclick="togglePw('google_password', this)">👁</button>
+            <button type="button" class="toggle-pw" title="Show password" onclick="togglePw('google_password', this)">👁</button>
           </div>
         </div>
       </div>
@@ -234,7 +243,7 @@ HTML_PAGE = """<!DOCTYPE html>
           <label>Apple ID Password</label>
           <div class="input-wrap">
             <input type="password" id="apple_password" placeholder="••••••••">
-            <button type="button" class="toggle-pw" onclick="togglePw('apple_password', this)">👁</button>
+            <button type="button" class="toggle-pw" title="Show password" onclick="togglePw('apple_password', this)">👁</button>
           </div>
         </div>
       </div>
@@ -287,7 +296,7 @@ HTML_PAGE = """<!DOCTYPE html>
         <label>Password Pattern</label>
         <div class="input-wrap">
           <input type="password" id="portal_password" placeholder="MySecure_{company}_2026!">
-          <button type="button" class="toggle-pw" onclick="togglePw('portal_password', this)">👁</button>
+          <button type="button" class="toggle-pw" title="Show password" onclick="togglePw('portal_password', this)">👁</button>
         </div>
         <p class="hint">Use <span class="pattern-example">{company}</span> for per-company passwords, or a fixed password for all.</p>
       </div>
@@ -309,9 +318,13 @@ function togglePw(id, btn) {
   if (input.type === 'password') {
     input.type = 'text';
     btn.textContent = '🙈';
+    btn.classList.add('active');
+    btn.title = 'Hide password';
   } else {
     input.type = 'password';
     btn.textContent = '👁';
+    btn.classList.remove('active');
+    btn.title = 'Show password';
   }
 }
 
