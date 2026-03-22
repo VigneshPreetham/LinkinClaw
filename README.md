@@ -19,7 +19,7 @@ curl -fsSL https://get.openclaw.ai | bash && openclaw setup
 Copy-paste this single command:
 
 ```bash
-git clone https://github.com/VigneshPreetham/LinkinClaw.git ~/.openclaw/workspace-linkedin && openclaw agents add linkedin --workspace ~/.openclaw/workspace-linkedin && openclaw gateway restart
+git clone https://github.com/VigneshPreetham/LinkinClaw.git ~/.openclaw/workspace-linkedin && openclaw agents add linkedin --workspace ~/.openclaw/workspace-linkedin
 ```
 
 ### 3. Open chat and talk to your bot
