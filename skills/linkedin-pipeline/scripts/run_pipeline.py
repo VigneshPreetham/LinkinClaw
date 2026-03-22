@@ -15,11 +15,6 @@ from pathlib import Path
 
 import yaml
 
-# Add project root to path for vault import
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-from lib.vault import load_config_with_vault
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -40,7 +35,8 @@ sys.path.insert(0, str(SKILLS_DIR / "linkedin-tracker" / "scripts"))
 
 
 def load_config(path: str) -> dict:
-    return load_config_with_vault(path)
+    with open(path) as f:
+        return yaml.safe_load(f)
 
 
 async def run_pipeline(config_path: str) -> dict:
@@ -94,9 +90,22 @@ async def run_pipeline(config_path: str) -> dict:
         summary["steps"]["crawl"] = {"status": "ok", "jobs_found": len(jobs)}
         logger.info("Found %d new jobs", len(jobs))
     except Exception as e:
-        logger.error("Crawl failed: %s", e, exc_info=True)
-        summary["steps"]["crawl"] = {"status": "error", "error": str(e)}
-        return summary
+        logger.warning("Crawl crashed: %s — checking cache for saved jobs", e)
+        # Crawl may have partially completed and saved jobs to cache
+        jobs = []
+        cache_path = config["paths"]["jobs_cache"]
+        if Path(cache_path).exists():
+            import json as _json
+            with open(cache_path) as f:
+                cache_data = _json.load(f)
+            jobs = cache_data.get("jobs", [])
+            logger.info("Recovered %d full job objects from cache", len(jobs))
+        if jobs:
+            summary["steps"]["crawl"] = {"status": "partial", "jobs_from_cache": len(jobs)}
+            logger.info("Recovered %d jobs from cache", len(jobs))
+        else:
+            summary["steps"]["crawl"] = {"status": "error", "error": str(e)}
+            return summary
 
     if not jobs:
         logger.info("No new jobs found. Pipeline complete.")

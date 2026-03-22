@@ -400,20 +400,22 @@ async def crawl_recruiter_posts(page: Page, config: dict) -> list[dict]:
     return jobs_from_posts
 
 
-def load_cache(cache_path: str) -> set[str]:
-    """Load seen job IDs from cache."""
+def load_cache(cache_path: str) -> tuple[set[str], list[dict]]:
+    """Load seen job IDs and full job objects from cache."""
     if Path(cache_path).exists():
         with open(cache_path) as f:
             data = json.load(f)
-        return set(data.get("seen_ids", []))
-    return set()
+        seen = set(data.get("seen_ids", []))
+        jobs = data.get("jobs", [])
+        return seen, jobs
+    return set(), []
 
 
-def save_cache(cache_path: str, seen_ids: set[str]):
-    """Save seen job IDs to cache."""
+def save_cache(cache_path: str, seen_ids: set[str], jobs: list[dict]):
+    """Save seen job IDs and full job objects to cache."""
     Path(cache_path).parent.mkdir(parents=True, exist_ok=True)
     with open(cache_path, "w") as f:
-        json.dump({"seen_ids": list(seen_ids)}, f)
+        json.dump({"seen_ids": list(seen_ids), "jobs": jobs}, f)
 
 
 async def crawl_jobs(config_path: str) -> list[dict]:
@@ -421,7 +423,7 @@ async def crawl_jobs(config_path: str) -> list[dict]:
     config = load_config_with_vault(config_path)
 
     cache_path = config["paths"]["jobs_cache"]
-    seen_ids = load_cache(cache_path)
+    seen_ids, _cached_jobs = load_cache(cache_path)
     all_jobs = []
 
     async with async_playwright() as p:
@@ -469,7 +471,7 @@ async def crawl_jobs(config_path: str) -> list[dict]:
                                 all_jobs.append(job)
                                 seen_ids.add(job["job_id"])
                         # Save cache after each search (incremental save)
-                        save_cache(cache_path, seen_ids)
+                        save_cache(cache_path, seen_ids, all_jobs)
                     except Exception as e:
                         logger.warning("Search failed for %s in %s: %s", role, location, e)
                         continue
@@ -492,7 +494,7 @@ async def crawl_jobs(config_path: str) -> list[dict]:
 
         finally:
             # Always save cache and close browser, even on crash
-            save_cache(cache_path, seen_ids)
+            save_cache(cache_path, seen_ids, all_jobs)
             try:
                 await browser.close()
             except Exception:
