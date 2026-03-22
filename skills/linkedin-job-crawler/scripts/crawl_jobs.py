@@ -212,8 +212,14 @@ async def search_jobs(page: Page, config: dict, role: str, location: str) -> lis
             await page.evaluate("window.scrollBy(0, window.innerHeight)")
             await random_delay(rate["scroll_delay"], "scroll")
 
-        # Extract job cards
-        job_cards = await page.query_selector_all(".job-card-container, .jobs-search-results__list-item")
+        # Extract job cards (LinkedIn uses various class names across logged-in/logged-out views)
+        job_cards = await page.query_selector_all(
+            ".job-search-card, "
+            ".base-search-card--link, "
+            ".job-card-container, "
+            ".jobs-search-results__list-item, "
+            "[data-job-id]"
+        )
 
         if not job_cards:
             logger.info("No job cards found on page %d", page_num + 1)
@@ -242,10 +248,27 @@ async def search_jobs(page: Page, config: dict, role: str, location: str) -> lis
 async def extract_job_from_card(card, page: Page, rate: dict) -> dict | None:
     """Extract job details from a search result card."""
     try:
-        # Get basic info from card
-        title_el = await card.query_selector(".job-card-list__title, .job-card-container__link")
-        company_el = await card.query_selector(".job-card-container__primary-description, .artdeco-entity-lockup__subtitle")
-        location_el = await card.query_selector(".job-card-container__metadata-item, .artdeco-entity-lockup__caption")
+        # Get basic info from card — multiple selector fallbacks for LinkedIn's varying markup
+        title_el = await card.query_selector(
+            ".base-search-card__title, "
+            ".job-search-card__title, "
+            ".job-card-list__title, "
+            ".job-card-container__link, "
+            "h3, h4"
+        )
+        company_el = await card.query_selector(
+            ".base-search-card__subtitle, "
+            ".job-search-card__subtitle, "
+            ".job-card-container__primary-description, "
+            ".artdeco-entity-lockup__subtitle, "
+            "h4, a[data-tracking-control-name*='company']"
+        )
+        location_el = await card.query_selector(
+            ".job-search-card__location, "
+            ".base-search-card__metadata, "
+            ".job-card-container__metadata-item, "
+            ".artdeco-entity-lockup__caption"
+        )
 
         if not title_el:
             return None
@@ -255,7 +278,7 @@ async def extract_job_from_card(card, page: Page, rate: dict) -> dict | None:
         location = (await location_el.inner_text()).strip() if location_el else "Unknown"
 
         # Get job URL and ID
-        link_el = await card.query_selector("a[href*='/jobs/view/']")
+        link_el = await card.query_selector("a[href*='/jobs/view/'], a.base-card__full-link, a.base-search-card--link")
         url = ""
         job_id = ""
         if link_el:
@@ -265,8 +288,21 @@ async def extract_job_from_card(card, page: Page, rate: dict) -> dict | None:
                 if "/jobs/view/" in url:
                     job_id = url.split("/jobs/view/")[-1].rstrip("/")
 
+        # Fallback: try data-job-id attribute on the card itself
         if not job_id:
+            job_id = await card.get_attribute("data-job-id") or ""
+            # Also try finding any link within the card
+            if not url:
+                any_link = await card.query_selector("a[href*='linkedin.com/jobs']")
+                if any_link:
+                    href = await any_link.get_attribute("href")
+                    if href:
+                        url = href.split("?")[0]
+
+        if not job_id and not url:
             return None
+        if not job_id and url:
+            job_id = url.rstrip("/").split("/")[-1]
 
         # Click into the job to get details
         await title_el.click()
