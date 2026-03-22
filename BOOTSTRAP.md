@@ -35,56 +35,30 @@ Ask one at a time:
 
 Update `config.yaml` with their answers.
 
-### Step 4: LinkedIn Login
+### Step 4: Secure Credential Entry
 
-Ask how they log into LinkedIn:
+**NEVER ask for passwords in chat.** Instead, launch the vault UI:
 
-> "How do you sign into LinkedIn? I support:
-> 1. **Email + password** (most common)
-> 2. **Sign in with Google**
-> 3. **Sign in with Apple**"
+```bash
+python skills/linkedin-vault-ui/scripts/vault_server.py --vault vault/secrets.yaml
+```
 
-Based on their answer, collect the right credentials. Then explain:
+Tell the user:
 
-> "These are stored in a local vault file on your machine — never in git, never sent anywhere else."
-
-Write to `vault/secrets.yaml` with the correct `login_method` and credentials.
-
-**Never echo back their password in chat.** Just confirm it's saved.
-
-### Step 5: Portal Account Patterns
-
-For jobs that don't have Easy Apply, the bot may need to create accounts on company career portals. Ask:
-
-> "For jobs that need you to apply on the company's own website, I can create accounts for you. Want me to do that, or would you rather handle those manually?"
-
-If yes:
-
-> "I'll need a pattern for the email and password to use on these portals.
+> "I've opened a secure form in your browser for entering your credentials. It has:
+> - 🔗 **LinkedIn login** — email/password, Google, or Apple sign-in
+> - 👤 **Your profile info** — name, email, phone for applications
+> - 🏢 **Portal account patterns** — for company career sites (optional)
 >
-> **Email pattern** — I can use a `+` alias so everything goes to your inbox:
-> For example, if your Gmail is `john@gmail.com`, I'd use `john+{company}@gmail.com` — so for Stripe, it becomes `john+stripe@gmail.com`. All replies still go to your inbox.
+> All passwords are hidden by default — use the 👁 button to peek. Everything saves locally to your machine, never in chat or git.
 >
-> What email pattern should I use? (Use `{company}` where the company name should go)"
+> Fill it out and hit Save — I'll know when you're done!"
 
-Then:
+Wait for the vault server to shut down (it auto-exits after save). Then confirm:
 
-> "**Password pattern** — You can use a fixed password for all portals, or include `{company}` for variation:
-> For example: `MySecure_{company}_2026!` becomes `MySecure_stripe_2026!`
->
-> What password pattern should I use?"
+> "Got it! Your credentials are saved securely. Let's continue."
 
-Save both patterns to `vault/secrets.yaml` under `portal_accounts`.
-
-If they'd rather handle external applications manually, set `portal_accounts.email_pattern` to empty and the bot will just flag those jobs.
-
-### Step 6: Profile Info
-
-Check if the resume parse already captured their name, email, phone. If not, ask:
-
-> "What name, email, and phone should I put on applications?"
-
-Save to `vault/secrets.yaml` under `user_profile`.
+If the user can't open the browser or the UI fails, fall back to asking them to manually edit `vault/secrets.yaml`.
 
 ### Step 7: Install Dependencies
 
