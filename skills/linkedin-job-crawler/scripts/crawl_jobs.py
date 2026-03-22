@@ -235,11 +235,15 @@ async def search_jobs(page: Page, config: dict, role: str, location: str) -> lis
                 continue
 
         # Try next page
-        next_btn = await page.query_selector('button[aria-label="Next"]')
-        if next_btn and await next_btn.is_enabled():
-            await next_btn.click()
-            await random_delay(rate["search_delay"], "next-page")
-        else:
+        try:
+            next_btn = await page.query_selector('button[aria-label="Next"]')
+            if next_btn and await next_btn.is_enabled():
+                await next_btn.click()
+                await random_delay(rate["search_delay"], "next-page")
+            else:
+                break
+        except Exception as e:
+            logger.warning("Pagination error: %s", e)
             break
 
     return jobs
@@ -304,11 +308,7 @@ async def extract_job_from_card(card, page: Page, rate: dict) -> dict | None:
         if not job_id and url:
             job_id = url.rstrip("/").split("/")[-1]
 
-        # Click into the job to get details
-        await title_el.click()
-        await random_delay(rate["action_delay"], "job-detail")
-
-        # Extract additional details from the detail panel
+        # Extract what we can from the card itself (no click-through — faster, safer)
         description = ""
         salary_range = ""
         easy_apply = False
@@ -316,36 +316,22 @@ async def extract_job_from_card(card, page: Page, rate: dict) -> dict | None:
         posted_date = ""
 
         try:
-            # Check for Easy Apply button
-            easy_apply_btn = await page.query_selector(".jobs-apply-button, button.jobs-apply-button--top-card")
-            if easy_apply_btn:
-                btn_text = await easy_apply_btn.inner_text()
-                easy_apply = "easy apply" in btn_text.lower()
+            # Posted date from card
+            time_el = await card.query_selector("time, .job-search-card__listdate, .job-search-card__listdate--new")
+            if time_el:
+                posted_date = ((await time_el.get_attribute("datetime")) or (await time_el.inner_text())).strip()
 
-            # Get description
-            desc_el = await page.query_selector(".jobs-description__content, .jobs-box__html-content")
-            if desc_el:
-                description = (await desc_el.inner_text()).strip()[:3000]
+            # Check card text for Easy Apply indicator
+            card_text = (await card.inner_text()).lower()
+            easy_apply = "easy apply" in card_text
 
-            # Get salary if shown
-            salary_el = await page.query_selector(".job-details-jobs-unified-top-card__job-insight--highlight, .compensation__salary")
+            # Salary if visible on card
+            salary_el = await card.query_selector(".job-search-card__salary-info, .salary-main-rail__min-amount")
             if salary_el:
                 salary_range = (await salary_el.inner_text()).strip()
 
-            # Get employment type
-            type_el = await page.query_selector(".job-details-jobs-unified-top-card__job-insight")
-            if type_el:
-                type_text = await type_el.inner_text()
-                if any(t in type_text.lower() for t in ["full-time", "part-time", "contract", "temporary", "internship"]):
-                    employment_type = type_text.strip()
-
-            # Get posted date
-            time_el = await page.query_selector(".jobs-unified-top-card__posted-date, time")
-            if time_el:
-                posted_date = (await time_el.inner_text()).strip()
-
         except Exception as e:
-            logger.debug("Error getting job details: %s", e)
+            logger.debug("Error getting card details: %s", e)
 
         return {
             "job_id": job_id,
@@ -440,8 +426,12 @@ async def crawl_jobs(config_path: str) -> list[dict]:
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
-            headless=False,
-            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+            headless=True,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+            ],
         )
         context = await browser.new_context(
             viewport={"width": 1280, "height": 800},
