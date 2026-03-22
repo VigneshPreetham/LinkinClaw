@@ -50,23 +50,23 @@ def load_config_with_vault(config_path: str = "config.yaml") -> dict:
             if key in secrets["user_profile"]:
                 config["user_profile"][key] = secrets["user_profile"][key]
 
-    # Merge portal account patterns
+    # Merge portal account settings
     if "portal_accounts" in secrets:
         config["portal_accounts"] = secrets["portal_accounts"]
 
     return config
 
 
-def generate_portal_email(pattern: str, company: str) -> str:
-    """Generate a portal-specific email from the pattern."""
-    if not pattern:
-        return ""
-    company_clean = company.lower().replace(" ", "").replace(",", "").replace(".", "")
-    return pattern.replace("{company}", company_clean)
+def get_portal_email(config: dict) -> str:
+    """Get the email used for all job portals."""
+    portal = config.get("portal_accounts", {})
+    return portal.get("email", "") or config.get("user_profile", {}).get("email", "")
 
 
-def generate_portal_password(pattern: str, company: str) -> str:
-    """Generate a portal-specific password from the pattern."""
+def get_portal_password(config: dict, company: str) -> str:
+    """Get the password for a job portal. Supports {company} placeholder."""
+    portal = config.get("portal_accounts", {})
+    pattern = portal.get("password_pattern", "")
     if not pattern:
         return ""
     company_clean = company.lower().replace(" ", "").replace(",", "").replace(".", "")

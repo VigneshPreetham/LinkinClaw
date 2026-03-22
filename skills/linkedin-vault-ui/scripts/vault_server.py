@@ -288,9 +288,9 @@ HTML_PAGE = """<!DOCTYPE html>
         For jobs that require applying on the company's career site. Leave blank to skip (those jobs will be flagged for manual review).
       </p>
       <div class="field">
-        <label>Email Pattern</label>
-        <input type="text" id="portal_email" placeholder="you+{company}@gmail.com">
-        <p class="hint">Use <span class="pattern-example">{company}</span> as placeholder. Example: <span class="pattern-example">jane+stripe@gmail.com</span></p>
+        <label>Email (same for all portals)</label>
+        <input type="email" id="portal_email" placeholder="you@example.com">
+        <p class="hint">Your regular email — used for all career site accounts.</p>
       </div>
       <div class="field">
         <label>Password Pattern</label>
@@ -366,7 +366,7 @@ document.getElementById('form').addEventListener('submit', async (e) => {
       sponsorship_answer: document.getElementById('sponsorship').value,
     },
     portal_accounts: {
-      email_pattern: document.getElementById('portal_email').value,
+      email: document.getElementById('portal_email').value,
       password_pattern: document.getElementById('portal_password').value,
       prefer_linkedin_apply: true,
     },

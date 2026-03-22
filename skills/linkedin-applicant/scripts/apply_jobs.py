@@ -248,15 +248,11 @@ async def apply_to_jobs(scored_jobs: list[dict], config_path: str) -> list[dict]
             else:
                 # No Easy Apply — check if we have portal account patterns
                 portal_config = config.get("portal_accounts", {})
-                email_pattern = portal_config.get("email_pattern", "")
+                portal_email = portal_config.get("email", "") or config.get("user_profile", {}).get("email", "")
 
-                if email_pattern and not scored.get("is_big_tech", False):
-                    # Generate portal credentials for this company
-                    from lib.vault import generate_portal_email, generate_portal_password
-                    portal_email = generate_portal_email(email_pattern, company)
-                    portal_password = generate_portal_password(
-                        portal_config.get("password_pattern", ""), company
-                    )
+                if portal_email and not scored.get("is_big_tech", False):
+                    from lib.vault import get_portal_password
+                    portal_password = get_portal_password(config, company)
                     logger.info("External application — portal creds generated for %s (%s)", company, portal_email)
                     results.append({
                         "job": job, "status": "external_application_needed",
