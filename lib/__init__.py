@@ -1,0 +1,1 @@
+# LinkinClaw shared library

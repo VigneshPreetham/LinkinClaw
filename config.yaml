@@ -1,0 +1,115 @@
+# =============================================================================
+# LinkinClaw — Job Preferences & Bot Configuration
+# =============================================================================
+# Edit this file to match YOUR job search.
+# Credentials go in vault/secrets.yaml (not here!)
+# =============================================================================
+
+# Job Search Preferences
+job_preferences:
+  target_roles:
+    - "Machine Learning Engineer"
+    - "ML Engineer"
+    - "Research Engineer"
+    - "Applied Scientist"
+    - "Software Engineer"
+    # Add more roles that match your profile:
+    # - "Data Scientist"
+    # - "Backend Engineer"
+  locations:
+    - "San Francisco Bay Area"
+    - "New York"
+    - "Remote"
+    # Add your preferred locations:
+    # - "Seattle"
+    # - "Los Angeles"
+  min_base_salary: 0  # Set to 0 to disable salary filter, or e.g. 150000
+  sponsorship_required: false  # Set to true if you need H1B/visa sponsorship
+  company_size: "any"  # any, small, medium, large
+  industry: "any"  # any, or specific like "tech", "finance"
+  job_type_exclude:
+    - "contract"
+    - "temporary"
+    # - "internship"  # Uncomment to also exclude internships
+  experience_level:
+    - "mid_senior"
+    - "associate"
+    - "entry"
+  posted_within_days: 7  # Only jobs posted within this many days
+
+# Application Settings
+application:
+  max_applications_per_hour: 5  # Conservative default — don't increase beyond 10
+  delay_between_actions: [30, 60]  # Random seconds between LinkedIn actions
+  max_daily_applications: 25
+  min_relevance_score: 50  # 0-100, only apply above this threshold
+  top_n_per_run: 5  # Apply to top N jobs per cron run
+  skip_cover_letter: true
+
+# Big Tech Companies — flagged for manual application, NOT auto-applied
+# These companies usually have their own career portals and interview processes.
+# The bot will log them for you to apply manually.
+big_tech_companies:
+  - "Google"
+  - "Alphabet"
+  - "DeepMind"
+  - "Meta"
+  - "Facebook"
+  - "Apple"
+  - "Amazon"
+  - "AWS"
+  - "Microsoft"
+  - "Netflix"
+  - "NVIDIA"
+  - "Tesla"
+  - "OpenAI"
+  - "Anthropic"
+  - "Salesforce"
+  - "Adobe"
+  - "Oracle"
+  - "Intel"
+  - "Uber"
+  - "Stripe"
+  - "Databricks"
+  # Add or remove companies as you see fit
+
+# Company Blacklist — never apply to these
+blacklist_companies: []
+  # - "Company I Don't Like"
+
+# Rate Limiting for LinkedIn Browsing
+# ⚠️ Don't make these faster — you risk getting flagged/banned
+rate_limiting:
+  page_load_delay: [3, 7]
+  action_delay: [30, 60]
+  search_delay: [10, 20]
+  scroll_delay: [1, 3]
+  max_pages_per_search: 10
+  max_searches_per_session: 20
+  session_break_minutes: [15, 30]
+  daily_page_views_limit: 500
+  typing_delay: [0.05, 0.15]
+
+# Recruiter Post Crawling
+recruiter_crawling:
+  enabled: true
+  keywords:
+    - "hiring"
+    - "we're looking for"
+    - "join our team"
+    - "open position"
+    - "ML engineer"
+    - "software engineer"
+  max_posts_per_session: 50
+
+# Paths (usually don't need to change these)
+paths:
+  resume_pdf: "resume.pdf"
+  parsed_resume: "parsed_resume.json"
+  applications_csv: "data/applications.csv"
+  jobs_cache: "data/jobs_cache.json"
+  vault: "vault/secrets.yaml"
+
+# LinkedIn cookie storage
+linkedin:
+  cookie_file: "data/linkedin_cookies.json"
