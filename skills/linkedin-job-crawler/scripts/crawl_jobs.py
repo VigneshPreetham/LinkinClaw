@@ -455,36 +455,49 @@ async def crawl_jobs(config_path: str) -> list[dict]:
         searches_done = 0
         max_searches = config["rate_limiting"].get("max_searches_per_session", 20)
 
-        for role in roles:
-            for location in locations:
+        try:
+            for role in roles:
+                for location in locations:
+                    if searches_done >= max_searches:
+                        logger.info("Hit max searches per session (%d), stopping", max_searches)
+                        break
+
+                    try:
+                        jobs = await search_jobs(page, config, role, location)
+                        for job in jobs:
+                            if job["job_id"] not in seen_ids:
+                                all_jobs.append(job)
+                                seen_ids.add(job["job_id"])
+                        # Save cache after each search (incremental save)
+                        save_cache(cache_path, seen_ids)
+                    except Exception as e:
+                        logger.warning("Search failed for %s in %s: %s", role, location, e)
+                        continue
+
+                    searches_done += 1
+                    await random_delay(config["rate_limiting"]["search_delay"], "between-searches")
+
                 if searches_done >= max_searches:
-                    logger.info("Hit max searches per session (%d), stopping", max_searches)
                     break
 
-                jobs = await search_jobs(page, config, role, location)
-                for job in jobs:
-                    if job["job_id"] not in seen_ids:
-                        all_jobs.append(job)
-                        seen_ids.add(job["job_id"])
+            # Crawl recruiter posts
+            try:
+                recruiter_jobs = await crawl_recruiter_posts(page, config)
+                for rj in recruiter_jobs:
+                    if rj["job_id"] not in seen_ids:
+                        all_jobs.append(rj)
+                        seen_ids.add(rj["job_id"])
+            except Exception as e:
+                logger.warning("Recruiter post crawl failed: %s", e)
 
-                searches_done += 1
-                await random_delay(config["rate_limiting"]["search_delay"], "between-searches")
+        finally:
+            # Always save cache and close browser, even on crash
+            save_cache(cache_path, seen_ids)
+            try:
+                await browser.close()
+            except Exception:
+                pass
 
-            if searches_done >= max_searches:
-                break
-
-        # Crawl recruiter posts
-        recruiter_jobs = await crawl_recruiter_posts(page, config)
-        for rj in recruiter_jobs:
-            if rj["job_id"] not in seen_ids:
-                # We only have partial info from posts — mark for detail fetch
-                all_jobs.append(rj)
-                seen_ids.add(rj["job_id"])
-
-        await browser.close()
-
-    # Save updated cache
-    save_cache(cache_path, seen_ids)
     logger.info("Crawl complete. %d new jobs found.", len(all_jobs))
 
     return all_jobs
