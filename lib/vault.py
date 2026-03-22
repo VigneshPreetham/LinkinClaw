@@ -33,9 +33,14 @@ def load_config_with_vault(config_path: str = "config.yaml") -> dict:
     # Merge linkedin credentials
     if "linkedin" not in config:
         config["linkedin"] = {}
+
     if "linkedin" in secrets:
-        config["linkedin"]["email"] = secrets["linkedin"].get("email", "")
-        config["linkedin"]["password"] = secrets["linkedin"].get("password", "")
+        linkedin = secrets["linkedin"]
+        config["linkedin"]["login_method"] = linkedin.get("login_method", "credentials")
+        config["linkedin"]["email"] = linkedin.get("email", "")
+        config["linkedin"]["password"] = linkedin.get("password", "")
+        config["linkedin"]["google_oauth"] = linkedin.get("google_oauth", {})
+        config["linkedin"]["apple_oauth"] = linkedin.get("apple_oauth", {})
 
     # Merge user profile
     if "user_profile" not in config:
@@ -45,4 +50,24 @@ def load_config_with_vault(config_path: str = "config.yaml") -> dict:
             if key in secrets["user_profile"]:
                 config["user_profile"][key] = secrets["user_profile"][key]
 
+    # Merge portal account patterns
+    if "portal_accounts" in secrets:
+        config["portal_accounts"] = secrets["portal_accounts"]
+
     return config
+
+
+def generate_portal_email(pattern: str, company: str) -> str:
+    """Generate a portal-specific email from the pattern."""
+    if not pattern:
+        return ""
+    company_clean = company.lower().replace(" ", "").replace(",", "").replace(".", "")
+    return pattern.replace("{company}", company_clean)
+
+
+def generate_portal_password(pattern: str, company: str) -> str:
+    """Generate a portal-specific password from the pattern."""
+    if not pattern:
+        return ""
+    company_clean = company.lower().replace(" ", "").replace(",", "").replace(".", "")
+    return pattern.replace("{company}", company_clean)

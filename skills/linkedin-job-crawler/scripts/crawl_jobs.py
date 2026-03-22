@@ -62,15 +62,84 @@ async def login_to_linkedin(page: Page, context: BrowserContext, config: dict) -
 
     # Fresh login
     try:
+        login_method = config["linkedin"].get("login_method", "credentials")
         await page.goto("https://www.linkedin.com/login", wait_until="domcontentloaded")
         await random_delay(config["rate_limiting"]["page_load_delay"], "login-page")
 
-        await human_type(page, "#username", config["linkedin"]["email"], config["rate_limiting"]["typing_delay"])
-        await random_delay([0.5, 1.5], "between-fields")
-        await human_type(page, "#password", config["linkedin"]["password"], config["rate_limiting"]["typing_delay"])
-        await random_delay([0.5, 1.0], "before-submit")
+        if login_method == "google_oauth":
+            logger.info("Logging in via Google OAuth")
+            google_btn = await page.query_selector(
+                "button[data-litms-control-urn*='google'], "
+                "a[href*='google'], "
+                "button:has-text('Sign in with Google'), "
+                "a:has-text('Sign in with Google')"
+            )
+            if google_btn:
+                await google_btn.click()
+                await page.wait_for_load_state("domcontentloaded")
+                await random_delay(config["rate_limiting"]["page_load_delay"], "google-oauth-page")
 
-        await page.click('button[type="submit"]')
+                google_creds = config["linkedin"].get("google_oauth", {})
+                # Enter Google email
+                email_input = await page.query_selector("input[type='email']")
+                if email_input:
+                    await human_type(page, "input[type='email']", google_creds.get("email", ""), config["rate_limiting"]["typing_delay"])
+                    await page.click("#identifierNext, button:has-text('Next')")
+                    await page.wait_for_load_state("domcontentloaded")
+                    await random_delay([2, 4], "google-email-next")
+
+                # Enter Google password
+                password_input = await page.query_selector("input[type='password']")
+                if password_input:
+                    await human_type(page, "input[type='password']", google_creds.get("password", ""), config["rate_limiting"]["typing_delay"])
+                    await page.click("#passwordNext, button:has-text('Next')")
+                    await page.wait_for_load_state("domcontentloaded")
+                    await random_delay(config["rate_limiting"]["page_load_delay"], "google-password-next")
+            else:
+                logger.warning("Google OAuth button not found, falling back to credentials")
+                login_method = "credentials"
+
+        elif login_method == "apple_oauth":
+            logger.info("Logging in via Apple OAuth")
+            apple_btn = await page.query_selector(
+                "button:has-text('Sign in with Apple'), "
+                "a:has-text('Sign in with Apple'), "
+                "button[data-litms-control-urn*='apple']"
+            )
+            if apple_btn:
+                await apple_btn.click()
+                await page.wait_for_load_state("domcontentloaded")
+                await random_delay(config["rate_limiting"]["page_load_delay"], "apple-oauth-page")
+
+                apple_creds = config["linkedin"].get("apple_oauth", {})
+                # Enter Apple ID
+                email_input = await page.query_selector("input[type='text'], input#account_name_text_field")
+                if email_input:
+                    await human_type(page, "input[type='text'], input#account_name_text_field", apple_creds.get("email", ""), config["rate_limiting"]["typing_delay"])
+                    await page.click("button#sign-in, button:has-text('Continue')")
+                    await page.wait_for_load_state("domcontentloaded")
+                    await random_delay([2, 4], "apple-email-next")
+
+                # Enter Apple password
+                password_input = await page.query_selector("input[type='password']")
+                if password_input:
+                    await human_type(page, "input[type='password']", apple_creds.get("password", ""), config["rate_limiting"]["typing_delay"])
+                    await page.click("button#sign-in, button:has-text('Sign In')")
+                    await page.wait_for_load_state("domcontentloaded")
+                    await random_delay(config["rate_limiting"]["page_load_delay"], "apple-password-next")
+            else:
+                logger.warning("Apple OAuth button not found, falling back to credentials")
+                login_method = "credentials"
+
+        if login_method == "credentials":
+            logger.info("Logging in via email/password")
+            await human_type(page, "#username", config["linkedin"]["email"], config["rate_limiting"]["typing_delay"])
+            await random_delay([0.5, 1.5], "between-fields")
+            await human_type(page, "#password", config["linkedin"]["password"], config["rate_limiting"]["typing_delay"])
+            await random_delay([0.5, 1.0], "before-submit")
+
+            await page.click('button[type="submit"]')
+
         await page.wait_for_load_state("domcontentloaded")
         await random_delay(config["rate_limiting"]["page_load_delay"], "post-login")
 

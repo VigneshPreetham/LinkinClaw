@@ -31,6 +31,14 @@ Handles multi-step Easy Apply forms:
 - Answers common dropdowns/radio buttons
 - Clicks through "Next" / "Review" / "Submit"
 
+## External Portal Accounts
+
+When a job doesn't have Easy Apply and the user has configured `portal_accounts` in the vault:
+- Generates a unique email using the user's pattern (e.g., `user+{company}@gmail.com`)
+- Generates a password using the user's pattern
+- Logs the generated credentials alongside the application entry
+- If no portal pattern is set, the job is simply flagged as "external application needed"
+
 ## Safety
 
 - Max 5 applications per hour (configurable)

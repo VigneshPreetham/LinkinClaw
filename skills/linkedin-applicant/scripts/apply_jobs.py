@@ -246,14 +246,34 @@ async def apply_to_jobs(scored_jobs: list[dict], config_path: str) -> list[dict]
                     "timestamp": datetime.now().isoformat(),
                 })
             else:
-                # No Easy Apply — external application needed
-                logger.info("No Easy Apply — marking as external: %s at %s", title, company)
-                results.append({
-                    "job": job, "status": "external_application_needed",
-                    "score": scored["relevance_score"], "reasoning": scored["reasoning"],
-                    "notes": "No Easy Apply option. External application required.",
-                    "timestamp": datetime.now().isoformat(),
-                })
+                # No Easy Apply — check if we have portal account patterns
+                portal_config = config.get("portal_accounts", {})
+                email_pattern = portal_config.get("email_pattern", "")
+
+                if email_pattern and not scored.get("is_big_tech", False):
+                    # Generate portal credentials for this company
+                    from lib.vault import generate_portal_email, generate_portal_password
+                    portal_email = generate_portal_email(email_pattern, company)
+                    portal_password = generate_portal_password(
+                        portal_config.get("password_pattern", ""), company
+                    )
+                    logger.info("External application — portal creds generated for %s (%s)", company, portal_email)
+                    results.append({
+                        "job": job, "status": "external_application_needed",
+                        "score": scored["relevance_score"], "reasoning": scored["reasoning"],
+                        "notes": f"External portal. Account: {portal_email}. Needs manual or automated portal apply.",
+                        "portal_email": portal_email,
+                        "portal_password": portal_password,
+                        "timestamp": datetime.now().isoformat(),
+                    })
+                else:
+                    logger.info("No Easy Apply — marking as external: %s at %s", title, company)
+                    results.append({
+                        "job": job, "status": "external_application_needed",
+                        "score": scored["relevance_score"], "reasoning": scored["reasoning"],
+                        "notes": "No Easy Apply option. External application required.",
+                        "timestamp": datetime.now().isoformat(),
+                    })
 
             # Delay between applications
             if applied_count < max_per_hour:
